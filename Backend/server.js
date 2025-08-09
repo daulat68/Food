@@ -48,6 +48,39 @@ app.get("/api/restaurants", async (req, res) => {
     }
 });
 
+app.get("/api/restaurantData", async (req, res) => {
+    const { lat, lng, restaurantId } = req.query;
+
+    if (!lat || !lng || !restaurantId) {
+        return res.status(400).json({ error: "Latitude, longitude, and restaurantId are required" });
+    }
+
+    const swiggyMenuURL = `https://www.swiggy.com/dapi/menu/pl?page-type=REGULAR_MENU&complete-menu=true&lat=${lat}&lng=${lng}&restaurantId=${restaurantId}`;
+
+    try {
+        const response = await fetch(swiggyMenuURL, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                "Accept": "application/json",
+            },
+        });
+
+        const contentType = response.headers.get("content-type");
+
+        if (!contentType || !contentType.includes("application/json")) {
+            const html = await response.text();
+            console.error("Swiggy API returned non-JSON response:");
+            console.error(html);
+            return res.status(502).json({ error: "Swiggy blocked the request or returned HTML." });
+        }
+
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        console.error("Error fetching Swiggy menu data:", error);
+        res.status(500).json({ error: "Failed to fetch menu data from Swiggy." });
+    }
+});
 app.listen(PORT, () => {
     console.log(`Proxy server running on port ${PORT}`);
 });
